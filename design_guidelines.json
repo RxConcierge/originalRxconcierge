@@ -1,0 +1,129 @@
+{
+  "theme": "light",
+  "typography": {
+    "fonts": {
+      "heading": "Manrope, sans-serif",
+      "body": "IBM Plex Sans, sans-serif",
+      "mono": "IBM Plex Mono, monospace"
+    },
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter leading-none text-slate-900",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-slate-900",
+      "h3": "text-xl sm:text-2xl font-semibold tracking-tight text-slate-800",
+      "h4": "text-lg sm:text-xl font-medium tracking-tight text-slate-800",
+      "body": "text-base leading-relaxed text-slate-600",
+      "small": "text-sm text-slate-500",
+      "overline": "text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
+    },
+    "rules": [
+      "NEVER use Inter, Roboto, Open Sans, Lato, or Space Grotesk.",
+      "Always apply tight tracking (tracking-tight) to headings.",
+      "Hierarchy gap: H1 to H2 must not jump more than 2 Tailwind steps."
+    ]
+  },
+  "colors": {
+    "archetype": "Organic & Earthy / Medical Professional",
+    "palette": {
+      "background": "#F8FAFC",
+      "surface": "#FFFFFF",
+      "surface_alt": "#F1F5F9",
+      "primary": "#2563EB",
+      "primary_hover": "#1D4ED8",
+      "secondary": "#0F172A",
+      "accent": "#4F46E5",
+      "text_primary": "#0F172A",
+      "text_secondary": "#475569",
+      "text_tertiary": "#94A3B8",
+      "border": "#E2E8F0",
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "danger": "#EF4444"
+    },
+    "rules": [
+      "FORBIDDEN: Teal green or teal blue (#1B93A4) for dashboards.",
+      "Always tint neutral grays towards blue to feel alive.",
+      "Only use Primary blue for CTAs to limit overuse.",
+      "Never use pure transparent backgrounds over content (use backdrop-blur + rgba)."
+    ]
+  },
+  "visual_enhancers": {
+    "surfaces": [
+      "Dashboards: Flat Solid backgrounds with subtle 1px border-slate-200, no shadow by default. Hover adds slight lift and shadow-md.",
+      "Headers/Nav: Solid background with a hard bottom border, OR Crystal Glassmorphism (bg-white/70 backdrop-blur-xl border-b border-white/40).",
+      "Medical Data Cards: Flat, cardless, rectangular, dense styles. Avoid heavy shadows to prevent visual refraction of data."
+    ],
+    "shadows": {
+      "sm": "shadow-sm",
+      "md": "shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08)]",
+      "lg": "shadow-[0_8px_30px_-4px_rgba(15,23,42,0.12)]"
+    },
+    "borders": {
+      "radius": "rounded-md (Subtle roundness max 8px for medical feel)",
+      "color": "border-slate-200"
+    }
+  },
+  "components": {
+    "buttons": "Pill-shaped or rounded-md for medical UI. Primary buttons use bg-blue-600 text-white hover:bg-blue-700. Provide clear micro-interactions (transform active:scale-95).",
+    "inputs": "Clean, rectangular inputs with 1px border. Focus state must use ring-2 ring-blue-500/20 border-blue-600.",
+    "cards": "For Patient Side: Clean cards with generous padding (p-6, p-8). For Dashboard Side: Cardless, dense rows (p-4), sharp edges.",
+    "chat": "Guided conversational flow. Main chat surface with step panel. Use quick-reply chips. Clear distinction between user and AI bubbles. Use sonner for alerts.",
+    "status_badges": "Color-coded pills (red/yellow/green) with redundant text labels for Triage/Clinical Filters.",
+    "camera_mask": "A centered overlay on a video feed area using a semi-transparent border (e.g., border-[50px] border-black/50) to enforce privacy bounds."
+  },
+  "grids": {
+    "dashboard_mode": "High Density Grid (Mode B): grid-cols-1 md:grid-cols-3 lg:grid-cols-4, gap-4 or gap-6. Every pixel utilized. h-full on children.",
+    "patient_mode": "The Tetris Grid (Mode A): grid-cols-1 md:grid-cols-8 lg:grid-cols-12, wide gap-8 to gap-12. Asymmetrical layout for landing."
+  },
+  "layouts": {
+    "spacing": "Generous Spacing (p-6, p-8, p-12) for patient forms. Dense compact spacing (p-2, p-4) for dashboard tables.",
+    "navigation": "Header MUST have visible nav links on desktop (no hamburger only).",
+    "alignment": "Left-align dense medical data and paragraphs. Center only heroes."
+  },
+  "motion": {
+    "transitions": "NEVER use 'transition: all'. Use specific properties: 'transition: transform 0.2s ease, opacity 0.2s ease, background-color 0.2s ease'.",
+    "chat_animations": "Staggered entrance for chat bubbles.",
+    "dashboard": "Minimalist micro-interactions for feedback only."
+  },
+  "accessibility": {
+    "contrast": "Text below 18px must be 4.5:1 ratio against background. Hover states must explicitly set text color.",
+    "testing": "All interactive elements MUST include data-testid (e.g., data-testid='blind-request-submit-button')."
+  },
+  "media": {
+    "icons": "lucide-react for default. Phosphor Icons for dense dashboard (yarn add @phosphor-icons/react).",
+    "image_urls": [
+      {
+        "url": "https://images.unsplash.com/photo-1576091358783-a212ec293ff3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzN8MHwxfHNlYXJjaHwyfHxwaGFybWFjeSUyMG1lZGljYWwlMjBwcm9mZXNzaW9uYWx8ZW58MHx8fHwxNzg2MjkyMjkxfDA&ixlib=rb-4.1.0&q=85",
+        "description": "Pharmacist helping patient",
+        "category": "Hero / Landing Page / About"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDF8MHwxfHNlYXJjaHw0fHxwcmVzY3JpcHRpb24lMjBtZWRpY2F0aW9uJTIwY2xlYW58ZW58MHx8fHwxNzg2MjkyMjkxfDA&ixlib=rb-4.1.0&q=85",
+        "description": "Clean medication blister packs",
+        "category": "Placeholder for AI Chat Camera / Medication ID"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1580281657702-257584239a55?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwzfHxjbGVhbiUyMG1vZGVybiUyMG1lZGljYWwlMjBjbGluaWN8ZW58MHx8fHwxNzg2MjkyMjkxfDA&ixlib=rb-4.1.0&q=85",
+        "description": "Clean modern medical room",
+        "category": "Pharmacy Dashboard Background/Auth Page"
+      }
+    ]
+  },
+  "instructions_to_main_agent": {
+    "file_extensions": "Use .js and .jsx for files, NOT .tsx (unless the repo is already strictly TS, but rule implies .js).",
+    "component_libraries": "Use Shadcn components heavily customized. Use 'sonner' for toasts.",
+    "ux_flow": "1. Patient Chat (Text/Camera) -> 2. Medication ID -> 3. Login/Register -> 4. Submit Blind Request. 5. Pharmacy Dashboard views queue -> 6. Clarify/Reject (AI Refinement) OR Accept (Fee + Contact Exchange).",
+    "dashboard_rules": "Top KPI strip, role-based views, Unified data panels, simple visual style. NO TEAL. Include 'Coming Soon' Concierge button.",
+    "chat_rules": "Guided stepwise flow. Main chat surface with right sidebar/step panel for intake progress. Use quick-reply chips.",
+    "testing_rule": "MUST add data-testid to every button, input, and interactive element."
+  },
+  "universal_guidelines_for_main_agent": [
+    "Do not converge toward generic AI outputs. Build layered design elements with z-index hierarchy.",
+    "Do not use transparent backgrounds without blur/scrim over content.",
+    "Never apply universal transition (transition: all).",
+    "Never center align the App container (no .App { text-align: center; }).",
+    "Never use AI emoji characters for icons.",
+    "Create dynamic micro-animations for interactions.",
+    "Utilize generous spacing; cramped designs look cheap.",
+    "NEVER use placeholder image services like via.placeholder.com. Use the provided Unsplash URLs."
+  ]
+}
