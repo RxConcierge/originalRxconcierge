@@ -34,11 +34,12 @@ export default function AuthPage() {
     setBusy(true);
     try {
       let user;
+      const cleanEmail = form.email.trim().toLowerCase();
       if (mode === "login") {
-        user = await login(form.email, form.password);
+        user = await login(cleanEmail, form.password);
       } else {
         const payload = {
-          email: form.email, password: form.password, name: form.name, role, phone: form.phone,
+          email: cleanEmail, password: form.password, name: form.name, role, phone: form.phone,
         };
         if (role === "pharmacy") {
           Object.assign(payload, {
@@ -123,13 +124,13 @@ export default function AuthPage() {
             )}
             <div>
               <Label className="text-sm">Email</Label>
-              <Input data-testid="auth-email" type="email" required value={form.email}
+              <Input data-testid="auth-email" type="email" autoComplete="username" required value={form.email}
                 onChange={(e) => set("email", e.target.value)}
                 className="mt-1.5 rounded-lg focus-visible:ring-blue-500/20" placeholder="you@email.com" />
             </div>
             <div>
               <Label className="text-sm">Password</Label>
-              <Input data-testid="auth-password" type="password" required value={form.password}
+              <Input data-testid="auth-password" type="password" autoComplete="current-password" required value={form.password}
                 onChange={(e) => set("password", e.target.value)}
                 className="mt-1.5 rounded-lg focus-visible:ring-blue-500/20" placeholder="••••••••" />
             </div>
