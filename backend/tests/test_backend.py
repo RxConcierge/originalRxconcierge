@@ -235,3 +235,86 @@ class TestAuthGuards:
     def test_no_token(self):
         r = requests.get(f"{API}/requests/queue")
         assert r.status_code == 401
+
+
+
+# -------------- Post-payment updates + earnings + new intake fields --------------
+class TestPostUpdateAndEarnings:
+    def test_full_flow_post_update_and_earnings(self, patient_token, downtown_token):
+        # Baseline earnings for Downtown
+        base = requests.get(f"{API}/pharmacy/earnings", headers=_auth_headers(downtown_token)).json()
+        base_total = float(base["total"])
+        base_count = int(base["count"])
+
+        # Create request with all new intake fields
+        payload = {
+            "medication": {"name": "TEST_Lipitor", "dose": "20mg", "form": "tablet", "quantity": "30"},
+            "schedule": "none", "fridge": False, "specialty": False,
+            "transfer_status": True,
+            "prescription_status": True,
+            "prescriber_status": False,
+            "delivery_pref": "any", "fill_today": False,
+        }
+        r = requests.post(f"{API}/requests", headers=_auth_headers(patient_token), json=payload)
+        assert r.status_code == 200, r.text
+        req = r.json()
+        assert req["transfer_status"] is True
+        assert req["prescription_status"] is True
+        assert req["prescriber_status"] is False
+        assert req.get("post_updates") == []
+        req_id = req["id"]
+
+        # Downtown accepts
+        acc = requests.post(f"{API}/requests/{req_id}/accept", headers=_auth_headers(downtown_token))
+        assert acc.status_code == 200, acc.text
+        assert acc.json()["platform_fee"] == 4.99
+
+        # Post a clinical update
+        upd = requests.post(
+            f"{API}/requests/{req_id}/post-update",
+            headers=_auth_headers(downtown_token),
+            json={"field": "Dose", "value": "40mg confirmed", "note": "MD approved"},
+        )
+        assert upd.status_code == 200, upd.text
+        d = upd.json()
+        assert d["fee_earned"] == 0.5
+        assert d["update"]["field"] == "Dose"
+        assert d["update"]["value"] == "40mg confirmed"
+
+        # Earnings increased by 0.50
+        after = requests.get(f"{API}/pharmacy/earnings", headers=_auth_headers(downtown_token)).json()
+        assert round(float(after["total"]) - base_total, 2) == 0.50
+        assert after["count"] == base_count + 1
+        assert any(e["request_id"] == req_id for e in after["entries"])
+
+        # Patient sees the post_update on /mine
+        mine = requests.get(f"{API}/requests/mine", headers=_auth_headers(patient_token))
+        target = [x for x in mine.json() if x["id"] == req_id][0]
+        assert len(target["post_updates"]) >= 1
+        assert target["post_updates"][-1]["field"] == "Dose"
+        assert target["post_updates"][-1]["value"] == "40mg confirmed"
+
+    def test_post_update_denied_if_not_owner(self, patient_token, downtown_token, greenvalley_token):
+        # Create + accept via greenvalley
+        payload = {
+            "medication": {"name": "TEST_Zoloft", "dose": "50mg", "form": "tablet", "quantity": "30"},
+            "schedule": "none", "fridge": False, "specialty": False,
+            "transfer_status": False, "prescription_status": True, "prescriber_status": False,
+            "delivery_pref": "any", "fill_today": False,
+        }
+        r = requests.post(f"{API}/requests", headers=_auth_headers(patient_token), json=payload)
+        req_id = r.json()["id"]
+        acc = requests.post(f"{API}/requests/{req_id}/accept", headers=_auth_headers(greenvalley_token))
+        assert acc.status_code == 200
+
+        # Downtown (not the accepting pharmacy) tries to update -> 400
+        bad = requests.post(
+            f"{API}/requests/{req_id}/post-update",
+            headers=_auth_headers(downtown_token),
+            json={"field": "Dose", "value": "10mg"},
+        )
+        assert bad.status_code == 400
+
+    def test_earnings_requires_pharmacy(self, patient_token):
+        r = requests.get(f"{API}/pharmacy/earnings", headers=_auth_headers(patient_token))
+        assert r.status_code == 403

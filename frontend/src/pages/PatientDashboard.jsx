@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
   Pill, Send, Sparkles, Truck, Zap, ShieldCheck, Phone, Mail, MapPin,
-  RefreshCw, Clock, CheckCircle2, Loader2,
+  RefreshCw, Clock, CheckCircle2, Loader2, Bell,
 } from "lucide-react";
 
 const SCHEDULES = [["none", "None"], ["II", "Schedule II"], ["III-V", "Schedule III–V"]];
@@ -29,11 +29,14 @@ function StatusBadge({ status }) {
 export default function PatientDashboard() {
   const pending = JSON.parse(localStorage.getItem("mf_pendingMed") || "null");
   const [med, setMed] = useState({
-    name: pending?.name || "", dose: pending?.dose || "", form: pending?.form || "", quantity: "",
+    name: pending?.name || "", dose: pending?.dose || "", form: pending?.form || "", quantity: pending?.quantity || "",
   });
   const [schedule, setSchedule] = useState("none");
   const [fridge, setFridge] = useState(false);
   const [specialty, setSpecialty] = useState(false);
+  const [transferStatus, setTransferStatus] = useState(!!pending?.transfer);
+  const [prescriberStatus, setPrescriberStatus] = useState(!!pending?.prescriber_call);
+  const [prescriptionStatus, setPrescriptionStatus] = useState(!!pending?.has_rx);
   const [deliveryPref, setDeliveryPref] = useState("any");
   const [maxFee, setMaxFee] = useState("");
   const [fillToday, setFillToday] = useState(false);
@@ -74,6 +77,9 @@ export default function PatientDashboard() {
     try {
       await api.post("/requests", {
         medication: med, schedule, fridge, specialty,
+        transfer_status: transferStatus,
+        prescriber_status: prescriberStatus,
+        prescription_status: prescriptionStatus,
         delivery_pref: deliveryPref,
         max_fee: deliveryPref === "fee" && maxFee ? Number(maxFee) : null,
         fill_today: fillToday, notes,
@@ -155,6 +161,24 @@ export default function PatientDashboard() {
                   </label>
                   <label className="flex items-center gap-2 text-sm text-slate-700 border border-slate-200 rounded-lg px-3 py-2">
                     Specialty <Switch data-testid="req-specialty" checked={specialty} onCheckedChange={setSpecialty} />
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm mb-2 block">Intake details</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <label className="flex items-center justify-between text-sm text-slate-700 border border-slate-200 rounded-lg px-3 py-2.5">
+                    Transfer from pharmacy
+                    <Switch data-testid="req-transfer" checked={transferStatus} onCheckedChange={setTransferStatus} />
+                  </label>
+                  <label className="flex items-center justify-between text-sm text-slate-700 border border-slate-200 rounded-lg px-3 py-2.5">
+                    Have paper Rx
+                    <Switch data-testid="req-prescription" checked={prescriptionStatus} onCheckedChange={setPrescriptionStatus} />
+                  </label>
+                  <label className="flex items-center justify-between text-sm text-slate-700 border border-slate-200 rounded-lg px-3 py-2.5">
+                    Pharmacy to call prescriber
+                    <Switch data-testid="req-prescriber" checked={prescriberStatus} onCheckedChange={setPrescriberStatus} />
                   </label>
                 </div>
               </div>
@@ -243,6 +267,9 @@ export default function PatientDashboard() {
                   {r.schedule !== "none" && <Badge variant="outline" className="rounded-full">Sched {r.schedule}</Badge>}
                   {r.fridge && <Badge variant="outline" className="rounded-full">Fridge</Badge>}
                   {r.specialty && <Badge variant="outline" className="rounded-full">Specialty</Badge>}
+                  {r.transfer_status && <Badge variant="outline" className="rounded-full">Transfer</Badge>}
+                  {r.prescription_status && <Badge variant="outline" className="rounded-full">Has Rx</Badge>}
+                  {r.prescriber_status && <Badge variant="outline" className="rounded-full">Call prescriber</Badge>}
                   {r.fill_today && <Badge variant="outline" className="rounded-full">Fill today</Badge>}
                 </div>
               </div>
@@ -267,6 +294,22 @@ export default function PatientDashboard() {
                     <span className="flex items-center gap-2"><Phone className="w-4 h-4 text-slate-400" /> {r.contact.pharmacy_phone}</span>
                     <span className="flex items-center gap-2"><MapPin className="w-4 h-4 text-slate-400" /> {r.contact.pharmacy_address}</span>
                   </div>
+                </div>
+              )}
+
+              {r.post_updates?.length > 0 && (
+                <div className="mt-4 space-y-2" data-testid="patient-post-updates">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Updates from your pharmacy</p>
+                  {r.post_updates.map((u) => (
+                    <div key={u.id} className="flex gap-2 text-sm text-blue-800 bg-blue-50 border border-blue-100 rounded-lg p-3">
+                      <Bell className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>
+                        <b>{u.field}:</b> {u.value}
+                        {u.note ? ` — ${u.note}` : ""}
+                        <span className="block text-xs text-blue-500 mt-0.5">{u.pharmacy_name}</span>
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

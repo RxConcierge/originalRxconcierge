@@ -61,10 +61,19 @@ class RequestInput(BaseModel):
     schedule: Literal["none", "II", "III-V"] = "none"
     fridge: bool = False
     specialty: bool = False
+    transfer_status: bool = False
+    prescriber_status: bool = False
+    prescription_status: bool = False
     delivery_pref: Literal["free", "fee", "any"] = "any"
     max_fee: Optional[float] = None
     fill_today: bool = False
     notes: Optional[str] = ""
+
+
+class PostUpdateInput(BaseModel):
+    field: str
+    value: str
+    note: Optional[str] = ""
 
 
 class ClarifyInput(BaseModel):

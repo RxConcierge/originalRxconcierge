@@ -7,12 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   Snowflake, Star, ShieldAlert, Bell, Check, X, MessageSquare, RefreshCw,
-  Phone, Mail, MapPin, Clock, Sparkles, Loader2, ListFilter,
+  Phone, Mail, MapPin, Clock, Sparkles, Loader2, ListFilter, DollarSign, Plus,
 } from "lucide-react";
 
 const CLINICAL = [
@@ -26,6 +26,7 @@ export default function PharmacyDashboard() {
   const { user } = useAuth();
   const [queue, setQueue] = useState([]);
   const [accepted, setAccepted] = useState([]);
+  const [earnings, setEarnings] = useState({ total: 0, count: 0, entries: [] });
   const [filters, setFilters] = useState({ schedule: "all", fridge: false, specialty: false, watchlist_only: false });
   const [watchlist, setWatchlist] = useState(user?.watchlist || []);
   const [newWatch, setNewWatch] = useState("");
@@ -52,8 +53,15 @@ export default function PharmacyDashboard() {
     } catch (e) {}
   };
 
+  const loadEarnings = async () => {
+    try {
+      const res = await api.get("/pharmacy/earnings");
+      setEarnings(res.data);
+    } catch (e) {}
+  };
+
   useEffect(() => { loadQueue(); }, [loadQueue]);
-  useEffect(() => { loadAccepted(); }, []);
+  useEffect(() => { loadAccepted(); loadEarnings(); }, []);
 
   const toggleClinical = (f) => {
     if (f.key === "schedule") {
@@ -90,8 +98,8 @@ export default function PharmacyDashboard() {
   const kpis = [
     ["In queue", queue.length, "text-blue-600"],
     ["Watchlist alerts", watchHits, "text-red-600"],
-    ["Clarifying", queue.filter((r) => r.status === "clarifying").length, "text-amber-600"],
     ["Accepted", accepted.length, "text-emerald-600"],
+    ["Earnings", `$${earnings.total.toFixed(2)}`, "text-slate-900"],
   ];
 
   return (
@@ -123,6 +131,7 @@ export default function PharmacyDashboard() {
         <TabsList className="rounded-full bg-slate-100 p-1">
           <TabsTrigger data-testid="tab-queue" value="queue" className="rounded-full px-5">Queue</TabsTrigger>
           <TabsTrigger data-testid="tab-accepted" value="accepted" className="rounded-full px-5">Accepted</TabsTrigger>
+          <TabsTrigger data-testid="tab-earnings" value="earnings" className="rounded-full px-5">Earnings</TabsTrigger>
           <TabsTrigger data-testid="tab-watchlist" value="watchlist" className="rounded-full px-5">Watchlist</TabsTrigger>
         </TabsList>
 
@@ -165,24 +174,39 @@ export default function PharmacyDashboard() {
             </div>
           )}
           {accepted.map((r) => (
-            <div key={r.id} data-testid="accepted-card" className="rounded-2xl border border-emerald-200 bg-white p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <Check className="w-5 h-5 text-emerald-600" />
-                <h3 className="font-heading font-bold text-lg text-slate-900">{r.medication.name}</h3>
-                <span className="text-sm text-slate-500">{r.medication.dose} · {r.medication.form}</span>
-                <Badge className="ml-auto rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
-                  Fee ${r.platform_fee}
-                </Badge>
-              </div>
-              {r.contact && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-slate-700 bg-slate-50 rounded-lg p-4">
-                  <span className="font-medium text-slate-900">{r.contact.patient_name}</span>
-                  <span className="flex items-center gap-2"><Phone className="w-4 h-4 text-slate-400" /> {r.contact.patient_phone}</span>
-                  <span className="flex items-center gap-2"><Mail className="w-4 h-4 text-slate-400" /> {r.contact.patient_email}</span>
-                </div>
-              )}
-            </div>
+            <AcceptedCard key={r.id} r={r} onUpdated={() => { loadAccepted(); loadEarnings(); }} />
           ))}
+        </TabsContent>
+
+        <TabsContent value="earnings" className="mt-5">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 max-w-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="font-heading font-semibold text-lg text-slate-900 flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-emerald-600" /> Earnings
+                </h3>
+                <p className="text-sm text-slate-500 mt-0.5">You earn $0.50 for each post-payment clinical update you provide.</p>
+              </div>
+              <div className="text-right">
+                <p className="font-heading font-black text-3xl text-slate-900" data-testid="earnings-total">${earnings.total.toFixed(2)}</p>
+                <p className="text-xs text-slate-400">{earnings.count} update{earnings.count === 1 ? "" : "s"}</p>
+              </div>
+            </div>
+            <div className="space-y-2" data-testid="earnings-list">
+              {earnings.entries.length === 0 && (
+                <p className="text-sm text-slate-400 py-6 text-center">No earnings yet. Add a clinical update on an accepted request to earn $0.50.</p>
+              )}
+              {earnings.entries.map((e) => (
+                <div key={e.id} className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{e.reason}</p>
+                    <p className="text-xs text-slate-400">{e.medication} · {new Date(e.created_at).toLocaleString()}</p>
+                  </div>
+                  <span className="font-mono font-semibold text-emerald-600">+${Number(e.amount).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="watchlist" className="mt-5">
@@ -299,7 +323,9 @@ function QueueRow({ r, onAccept, reload }) {
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Ask for clarification</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>Ask for clarification</DialogTitle>
+                <DialogDescription>Send a question to the patient about this request.</DialogDescription>
+              </DialogHeader>
               <Textarea data-testid="clarify-input" value={question} onChange={(e) => setQuestion(e.target.value)}
                 placeholder="e.g. Is a generic acceptable? What quantity exactly?" rows={3} className="rounded-lg" />
               <DialogFooter>
@@ -319,7 +345,9 @@ function QueueRow({ r, onAccept, reload }) {
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Reject &amp; refine</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>Reject &amp; refine</DialogTitle>
+                <DialogDescription>The AI summarizes this into a refinement note and returns the request to the queue.</DialogDescription>
+              </DialogHeader>
               <p className="text-sm text-slate-500">The AI will summarize this into a refinement note and return the request to the queue.</p>
               <Textarea data-testid="reject-input" value={reason} onChange={(e) => setReason(e.target.value)}
                 placeholder="Why can't you fill it? e.g. Out of stock; need brand confirmation" rows={3} className="rounded-lg" />
@@ -338,6 +366,100 @@ function QueueRow({ r, onAccept, reload }) {
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+function AcceptedCard({ r, onUpdated }) {
+  const [open, setOpen] = useState(false);
+  const [field, setField] = useState("");
+  const [value, setValue] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const FIELDS = ["Dose", "Form", "Quantity", "Substitution", "Stock status", "Ready time"];
+
+  const submit = async () => {
+    if (!field.trim() || !value.trim()) return toast.error("Field and new value are required");
+    setBusy(true);
+    try {
+      const res = await api.post(`/requests/${r.id}/post-update`, { field, value, note });
+      toast.success(`Update sent to patient · you earned $${res.data.fee_earned.toFixed(2)}`);
+      setOpen(false); setField(""); setValue(""); setNote("");
+      onUpdated();
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div data-testid="accepted-card" className="rounded-2xl border border-emerald-200 bg-white p-6">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <Check className="w-5 h-5 text-emerald-600" />
+        <h3 className="font-heading font-bold text-lg text-slate-900">{r.medication.name}</h3>
+        <span className="text-sm text-slate-500">{r.medication.dose} · {r.medication.form}</span>
+        <Badge className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+          Fee ${r.platform_fee}
+        </Badge>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button data-testid="post-update-btn" size="sm" variant="outline"
+              className="ml-auto rounded-full gap-1.5 border-blue-200 text-blue-700 hover:bg-blue-50">
+              <Plus className="w-4 h-4" /> Add clinical update
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Post-payment clinical update</DialogTitle>
+              <DialogDescription>Send an updated clinical detail to the patient. You earn $0.50 per update.</DialogDescription>
+            </DialogHeader>
+            <p className="text-sm text-slate-500">The patient sees this update instantly. You earn $0.50 per update.</p>
+            <div className="flex flex-wrap gap-2">
+              {FIELDS.map((f) => (
+                <button key={f} data-testid={`post-field-${f}`} onClick={() => setField(f)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                    field === f ? "bg-slate-900 text-white border-slate-900" : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
+                  }`}>
+                  {f}
+                </button>
+              ))}
+            </div>
+            <Input data-testid="post-field-input" value={field} onChange={(e) => setField(e.target.value)}
+              placeholder="Detail being updated (e.g. Dose)" className="rounded-lg" />
+            <Input data-testid="post-value-input" value={value} onChange={(e) => setValue(e.target.value)}
+              placeholder="New value (e.g. 40mg confirmed)" className="rounded-lg" />
+            <Textarea data-testid="post-note-input" value={note} onChange={(e) => setNote(e.target.value)}
+              placeholder="Optional note for the patient" rows={2} className="rounded-lg" />
+            <DialogFooter>
+              <Button data-testid="post-update-submit" onClick={submit} disabled={busy}
+                className="rounded-full bg-blue-600 hover:bg-blue-700">
+                {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send update · earn $0.50"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {r.contact && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-slate-700 bg-slate-50 rounded-lg p-4">
+          <span className="font-medium text-slate-900">{r.contact.patient_name}</span>
+          <span className="flex items-center gap-2"><Phone className="w-4 h-4 text-slate-400" /> {r.contact.patient_phone}</span>
+          <span className="flex items-center gap-2"><Mail className="w-4 h-4 text-slate-400" /> {r.contact.patient_email}</span>
+        </div>
+      )}
+
+      {r.post_updates?.length > 0 && (
+        <div className="mt-3 space-y-2" data-testid="pharm-post-updates">
+          {r.post_updates.map((u) => (
+            <div key={u.id} className="flex items-center justify-between text-sm text-blue-800 bg-blue-50 border border-blue-100 rounded-lg p-3">
+              <span><b>{u.field}:</b> {u.value}{u.note ? ` — ${u.note}` : ""}</span>
+              <span className="font-mono text-emerald-600 text-xs shrink-0">+${Number(u.fee).toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

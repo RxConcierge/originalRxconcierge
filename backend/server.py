@@ -11,7 +11,7 @@ load_dotenv(ROOT_DIR / ".env")
 
 from models import (
     RegisterInput, LoginInput, ChatInput, RequestInput, ClarifyInput,
-    RejectInput, MatchPreviewInput, WatchlistInput, now_iso, new_id,
+    RejectInput, MatchPreviewInput, WatchlistInput, PostUpdateInput, now_iso, new_id,
 )
 from auth import hash_password, verify_password, create_access_token, get_current_user_factory
 import ai_service
@@ -125,6 +125,9 @@ async def create_request(payload: RequestInput, request: Request):
         "schedule": payload.schedule,
         "fridge": payload.fridge,
         "specialty": payload.specialty,
+        "transfer_status": payload.transfer_status,
+        "prescriber_status": payload.prescriber_status,
+        "prescription_status": payload.prescription_status,
         "delivery_pref": payload.delivery_pref,
         "max_fee": payload.max_fee,
         "fill_today": payload.fill_today,
@@ -132,6 +135,7 @@ async def create_request(payload: RequestInput, request: Request):
         "status": "queued",
         "clarifications": [],
         "refinements": [],
+        "post_updates": [],
         "accepted_by": None,
         "platform_fee": 0.0,
         "contact": None,
@@ -270,6 +274,51 @@ async def accept(req_id: str, request: Request):
 
 
 # ---------------- Pharmacy profile ----------------
+POST_UPDATE_FEE = 0.50
+
+
+@api.post("/requests/{req_id}/post-update")
+async def post_update(req_id: str, payload: PostUpdateInput, request: Request):
+    user = await require_role(request, "pharmacy")
+    req = await db.requests.find_one({"id": req_id})
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+    accepted_by = req.get("accepted_by") or {}
+    if req.get("status") != "accepted" or accepted_by.get("pharmacy_id") != user["id"]:
+        raise HTTPException(status_code=400, detail="You can only update requests you have accepted")
+    entry = {
+        "id": new_id(),
+        "field": payload.field,
+        "value": payload.value,
+        "note": payload.note or "",
+        "pharmacy_name": user.get("pharmacy_name") or user["name"],
+        "fee": POST_UPDATE_FEE,
+        "created_at": now_iso(),
+    }
+    await db.requests.update_one(
+        {"id": req_id},
+        {"$push": {"post_updates": entry}, "$set": {"updated_at": now_iso()}},
+    )
+    await db.earnings.insert_one({
+        "id": new_id(),
+        "pharmacy_id": user["id"],
+        "amount": POST_UPDATE_FEE,
+        "reason": f"Post-payment update: {payload.field}",
+        "request_id": req_id,
+        "medication": req.get("medication", {}).get("name", ""),
+        "created_at": now_iso(),
+    })
+    return {"ok": True, "update": entry, "fee_earned": POST_UPDATE_FEE}
+
+
+@api.get("/pharmacy/earnings")
+async def earnings(request: Request):
+    user = await require_role(request, "pharmacy")
+    entries = await db.earnings.find({"pharmacy_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    total = round(sum(float(e.get("amount", 0)) for e in entries), 2)
+    return {"total": total, "count": len(entries), "entries": entries}
+
+
 @api.put("/pharmacy/watchlist")
 async def update_watchlist(payload: WatchlistInput, request: Request):
     user = await require_role(request, "pharmacy")

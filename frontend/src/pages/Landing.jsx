@@ -105,18 +105,27 @@ export default function Landing() {
               Intake progress
             </p>
             <div className="space-y-3" data-testid="intake-panel">
-              {[
-                ["Name", identified?.name],
-                ["Dose", identified?.dose],
-                ["Form", identified?.form],
-              ].map(([label, val]) => (
-                <div key={label} className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                  <span className="text-sm text-slate-500">{label}</span>
-                  <span className={`text-sm font-medium ${val ? "text-slate-900" : "text-slate-300"}`}>
-                    {val || "—"}
-                  </span>
-                </div>
-              ))}
+              {(() => {
+                const has = (k) => identified && k in identified;
+                const yn = (v) => (v ? "Yes" : "No");
+                const rows = [
+                  { label: "Name", display: identified?.name, filled: !!identified?.name },
+                  { label: "Dose", display: identified?.dose, filled: !!identified?.dose },
+                  { label: "Form", display: identified?.form, filled: !!identified?.form },
+                  { label: "Quantity", display: identified?.quantity, filled: !!identified?.quantity },
+                  { label: "Transfer from pharmacy", display: has("transfer") ? yn(identified.transfer) : "", filled: has("transfer") },
+                  { label: "Has paper Rx", display: has("has_rx") ? yn(identified.has_rx) : "", filled: has("has_rx") },
+                  { label: "Pharmacy to call prescriber", display: has("prescriber_call") ? yn(identified.prescriber_call) : "", filled: has("prescriber_call") },
+                ];
+                return rows.map((r) => (
+                  <div key={r.label} className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                    <span className="text-sm text-slate-500">{r.label}</span>
+                    <span className={`text-sm font-medium ${r.filled ? "text-slate-900" : "text-slate-300"}`}>
+                      {r.filled ? r.display : "—"}
+                    </span>
+                  </div>
+                ));
+              })()}
             </div>
             <Button
               data-testid="continue-request-btn"
