@@ -318,3 +318,97 @@ class TestPostUpdateAndEarnings:
     def test_earnings_requires_pharmacy(self, patient_token):
         r = requests.get(f"{API}/pharmacy/earnings", headers=_auth_headers(patient_token))
         assert r.status_code == 403
+
+
+# -------------- AI Clinical Validation + Auto-classification --------------
+class TestAIClinicalValidation:
+    def test_valtrex_capsules_corrected_to_tablet(self):
+        """AI must gently correct 'Valtrex capsules' -> form=tablet (Valtrex only comes as tablets)."""
+        r = requests.post(f"{API}/chat/message", json={
+            "session_id": f"sess-{uuid.uuid4().hex[:6]}",
+            "message": "I need Valtrex 500mg capsules, 30 of them",
+            "history": [],
+        }, timeout=60)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert "reply" in d and len(d["reply"]) > 0
+        reply_lower = d["reply"].lower()
+        identified = d.get("identified") or {}
+        form = (identified.get("form") or "").lower()
+        # Key acceptance: form must NOT be 'capsule' — should be corrected to tablet/caplet
+        assert "capsule" not in form, f"AI failed to correct form; got form='{form}', reply='{d['reply']}'"
+        assert "tablet" in form or "caplet" in form, f"Expected tablet/caplet, got form='{form}'"
+        # Reply should mention the correction (tablet/caplet keyword)
+        assert ("tablet" in reply_lower or "caplet" in reply_lower), (
+            f"Reply should mention tablet/caplet as the correct form: {d['reply']}"
+        )
+
+    def test_create_request_auto_classifies_controlled_and_hides_from_patient(self, patient_token):
+        """Adderall XR should auto-classify schedule=II AND be stripped from patient responses."""
+        payload = {
+            "medication": {"name": "TEST_Adderall XR", "dose": "20mg", "form": "capsule", "quantity": "30"},
+            # Client attempts to set clinical fields — server must IGNORE and use AI
+            "schedule": "none", "fridge": False, "specialty": False,
+            "transfer_status": False, "prescription_status": True, "prescriber_status": False,
+            "delivery_pref": "any", "fill_today": False,
+        }
+        r = requests.post(f"{API}/requests", headers=_auth_headers(patient_token), json=payload, timeout=60)
+        assert r.status_code == 200, r.text
+        body = r.json()
+        # Patient view MUST NOT contain clinical classification keys
+        assert "schedule" not in body, f"schedule leaked to patient: {body}"
+        assert "fridge" not in body, f"fridge leaked to patient: {body}"
+        assert "specialty" not in body, f"specialty leaked to patient: {body}"
+        req_id = body["id"]
+
+        # /requests/mine must also strip
+        mine = requests.get(f"{API}/requests/mine", headers=_auth_headers(patient_token))
+        assert mine.status_code == 200
+        target = [x for x in mine.json() if x["id"] == req_id][0]
+        assert "schedule" not in target
+        assert "fridge" not in target
+        assert "specialty" not in target
+
+    def test_pharmacy_queue_sees_ai_classification(self, patient_token, downtown_token):
+        """Adderall queue row must show schedule=II; Lantus insulin must show fridge=true."""
+        # Create Adderall as patient
+        p1 = {"medication": {"name": "TEST_Adderall XR", "dose": "20mg", "form": "capsule", "quantity": "30"},
+              "schedule": "none", "fridge": False, "specialty": False,
+              "transfer_status": False, "prescription_status": True, "prescriber_status": False,
+              "delivery_pref": "any", "fill_today": False}
+        r1 = requests.post(f"{API}/requests", headers=_auth_headers(patient_token), json=p1, timeout=60)
+        assert r1.status_code == 200
+        adderall_id = r1.json()["id"]
+
+        # Create Lantus insulin
+        p2 = {"medication": {"name": "TEST_Lantus insulin", "dose": "100 units/mL", "form": "injection", "quantity": "1 pen"},
+              "schedule": "none", "fridge": False, "specialty": False,
+              "transfer_status": False, "prescription_status": True, "prescriber_status": False,
+              "delivery_pref": "any", "fill_today": False}
+        r2 = requests.post(f"{API}/requests", headers=_auth_headers(patient_token), json=p2, timeout=60)
+        assert r2.status_code == 200
+        insulin_id = r2.json()["id"]
+
+        # Pharmacy queue
+        q = requests.get(f"{API}/requests/queue", headers=_auth_headers(downtown_token))
+        assert q.status_code == 200
+        by_id = {d["id"]: d for d in q.json()}
+        assert adderall_id in by_id, "Adderall not in pharmacy queue"
+        assert insulin_id in by_id, "Insulin not in pharmacy queue"
+
+        add_row = by_id[adderall_id]
+        ins_row = by_id[insulin_id]
+
+        # Pharmacy MUST see clinical fields
+        assert add_row.get("schedule") == "II", f"Adderall schedule expected II, got {add_row.get('schedule')}"
+        assert ins_row.get("fridge") is True, f"Lantus fridge expected True, got {ins_row.get('fridge')}"
+
+        # Schedule II filter should include Adderall
+        qf = requests.get(f"{API}/requests/queue?schedule=II", headers=_auth_headers(downtown_token))
+        assert qf.status_code == 200
+        assert adderall_id in [d["id"] for d in qf.json()]
+
+        # Fridge filter should include Lantus
+        qfr = requests.get(f"{API}/requests/queue?fridge=true", headers=_auth_headers(downtown_token))
+        assert qfr.status_code == 200
+        assert insulin_id in [d["id"] for d in qfr.json()]

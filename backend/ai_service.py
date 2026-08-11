@@ -32,6 +32,9 @@ IDENTIFY_SYSTEM = (
     "7. prescriber_call — does the pharmacy need to CALL the prescriber to obtain the prescription? "
     "(true/false; usually true when has_rx is false)\n"
     "NEVER give medical advice, dosing recommendations, or diagnoses. Ask naturally and briefly. "
+    "CLINICAL VALIDATION: Use your medical knowledge to make sure the drug + form combination is real and correct. "
+    "If the patient gives an impossible or wrong combination (e.g. 'Valtrex capsules' when Valtrex only comes as tablets/caplets, "
+    "or 'insulin tablets' when insulin is injectable), GENTLY correct them, explain briefly, and set identified.form to the correct form. "
     "Once you have name, dose, form, quantity AND the three yes/no statuses (transfer, has_rx, prescriber_call), set ready=true. "
     "The MOMENT ready becomes true, your 'reply' MUST be a short proactive closing message, for example: "
     "\"I've gathered your medication details — [name] [dose] [form], qty [quantity]. Click Continue below to submit your Blind Request to local pharmacies.\" "
@@ -71,6 +74,33 @@ async def identify_medication(session_id: str, history: list, message: str) -> d
             "identified": None,
             "ready": False,
         }
+
+
+CLASSIFY_SYSTEM = "You are a licensed pharmacist classifying medications for pharmacy operations."
+
+
+async def classify_drug(name: str, form: str = "") -> dict:
+    prompt = (
+        f"Classify the medication '{name}'{f' ({form})' if form else ''} for pharmacy operations. "
+        "Respond with ONLY a JSON object: "
+        '{"schedule": "none" | "II" | "III-V", "fridge": true/false, "specialty": true/false}. '
+        "schedule = US DEA controlled-substance schedule (use 'II' for Schedule II like Adderall/oxycodone, "
+        "'III-V' for Schedule III-V like codeine/testosterone/alprazolam, 'none' if not controlled). "
+        "fridge = true if it requires refrigerated storage (e.g. insulin, many injectables/biologics). "
+        "specialty = true if it is a specialty / limited-distribution / biologic drug (e.g. Humira, Ozempic, Enbrel). "
+        "Base this strictly on real pharmacology. If unsure, use 'none', false, false."
+    )
+    chat = LlmChat(api_key=_key(), session_id="classify", system_message=CLASSIFY_SYSTEM).with_model(
+        MODEL_PROVIDER, MODEL_NAME
+    )
+    try:
+        data = json.loads(_clean_json(await chat.send_message(UserMessage(text=prompt))))
+        sched = data.get("schedule", "none")
+        if sched not in ("none", "II", "III-V"):
+            sched = "none"
+        return {"schedule": sched, "fridge": bool(data.get("fridge")), "specialty": bool(data.get("specialty"))}
+    except Exception:
+        return {"schedule": "none", "fridge": False, "specialty": False}
 
 
 async def refine_request(medication: dict, clarifications: list, reason: str) -> str:

@@ -98,6 +98,15 @@ async def chat_message(payload: ChatInput):
 
 
 # ---------------- Requests (patient) ----------------
+def _patient_view(req: dict) -> dict:
+    """Strip pharmacy-only clinical classification so patients never see it."""
+    r = dict(req)
+    r.pop("_id", None)
+    for k in ("schedule", "fridge", "specialty"):
+        r.pop(k, None)
+    return r
+
+
 def _blind_view(req: dict, viewer_pharmacy_id: str = None) -> dict:
     r = dict(req)
     r.pop("_id", None)
@@ -115,6 +124,8 @@ def _blind_view(req: dict, viewer_pharmacy_id: str = None) -> dict:
 @api.post("/requests")
 async def create_request(payload: RequestInput, request: Request):
     user = await require_role(request, "patient")
+    # Pharmacy-only clinical classification is auto-designated by the AI and hidden from the patient.
+    clinical = await ai_service.classify_drug(payload.medication.name, payload.medication.form)
     doc = {
         "id": new_id(),
         "patient_id": user["id"],
@@ -122,9 +133,9 @@ async def create_request(payload: RequestInput, request: Request):
         "patient_phone": user.get("phone", ""),
         "patient_email": user["email"],
         "medication": payload.medication.model_dump(),
-        "schedule": payload.schedule,
-        "fridge": payload.fridge,
-        "specialty": payload.specialty,
+        "schedule": clinical["schedule"],
+        "fridge": clinical["fridge"],
+        "specialty": clinical["specialty"],
         "transfer_status": payload.transfer_status,
         "prescriber_status": payload.prescriber_status,
         "prescription_status": payload.prescription_status,
@@ -144,14 +155,14 @@ async def create_request(payload: RequestInput, request: Request):
     }
     await db.requests.insert_one(doc)
     doc.pop("_id", None)
-    return doc
+    return _patient_view(doc)
 
 
 @api.get("/requests/mine")
 async def my_requests(request: Request):
     user = await require_role(request, "patient")
     docs = await db.requests.find({"patient_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
-    return docs
+    return [_patient_view(d) for d in docs]
 
 
 @api.post("/requests/preview-match")

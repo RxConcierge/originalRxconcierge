@@ -1,0 +1,28 @@
+{
+  "summary": "Full E2E verification of the NEW AI clinical-validation + auto-classification feature passed. Highlights: (1) VALTREX ACCEPTANCE — sending 'I need Valtrex 500mg capsules, 30 of them' to landing AI chat returned reply 'Just a small correction — Valtrex (valacyclovir) actually comes as tablets or caplets, not capsules. I'll set the form to tablets for you!' AND intake-panel Form row rendered 'tablet' (NOT capsule). (2) Patient New Request form has NO schedule/fridge/specialty inputs and shows auto-classify-note. req-transfer/req-prescription/req-prescriber toggles still exist. (3) Submitted TEST_UI_Adderall XR as patient — /requests and /requests/mine responses OMIT schedule/fridge/specialty keys; My Requests card shows only Transfer/Rx/Prescriber badges (no Schedule/Fridge/Specialty). (4) Pharmacy queue (downtown@demo.com) for the same Adderall row displays 'Schedule II' badge; Lantus insulin row displays 'Fridge' badge; Ozempic shows 'Fridge + Specialty' — proving AI classification is visible only to pharmacies. (5) Clinical Filters (Schedule II button) filter the queue correctly. (6) Regressions still green: blind queue hides patient identity, watchlist_hit still marks Ozempic/Adderall, $4.99 accept fee + $0.50 post-update + earnings endpoints still pass all pytest coverage. Extended /app/backend/tests/test_backend.py with class TestAIClinicalValidation (3 new tests). Total pytest: 21/21 passed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_backend.py",
+    "/app/test_reports/pytest/iter5.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py create_request awaits ai_service.classify_drug on every POST /requests — adds ~1-2s Claude call latency to each request. Consider caching by (name.lower(), form.lower()) in Mongo to short-circuit repeats and reduce cost.",
+    "ai_service.classify_drug uses a fixed session_id='classify' for all classification calls — fine functionally but breaks per-user tracing; consider a random session per call.",
+    "_patient_view only strips schedule/fridge/specialty — good; but seed.py still writes these on 3 seeded requests, so pharmacies see them and patients don't (correct outcome).",
+    "AIChat SESSION_ID still generated once per module load (carry-over from iter 4); anonymous users in one tab share it.",
+    "server.py post_update endpoint accepts arbitrary strings for `field` — no whitelist/length cap; could be abused to inflate the $0.50 earning entries. Recommend bounding to ['Dose','Form','Quantity','Substitution','Stock status','Ready time'] or maxlen 40."
+  ],
+  "updated_files": ["/app/backend/tests/test_backend.py"],
+  "success_rate": {"backend": "100% (21/21 pytest incl. 3 new AI clinical-validation tests)", "frontend": "100% (all 6 required flows: Valtrex correction, no clinical inputs, patient hidden, pharmacy visible, filter, blind queue)"},
+  "test_credentials": "patient@demo.com/demo123, downtown@demo.com/demo123, greenvalley@demo.com/demo123, alex@demo.com/demo123",
+  "seed_data_creation": "Created TEST_UI_Adderall XR (via UI) and TEST_Adderall XR / TEST_Lantus insulin (via pytest). All prefixed TEST_ and remain in Mongo (safe).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "AI clinical validation (Valtrex→tablet correction) and pharmacy-only AI classification (schedule/fridge/specialty) are fully working end-to-end on the preview URL. Patient never sees clinical fields; pharmacy queue does and Clinical Filters work. All prior features (post-update, earnings, blind queue, accept fee) remain green. The full pytest suite (backend/tests/test_backend.py) now has 21 tests all passing (~68s including AI calls)."
+}

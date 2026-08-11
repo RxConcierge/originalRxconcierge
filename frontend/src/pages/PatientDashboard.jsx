@@ -13,7 +13,6 @@ import {
   RefreshCw, Clock, CheckCircle2, Loader2, Bell,
 } from "lucide-react";
 
-const SCHEDULES = [["none", "None"], ["II", "Schedule II"], ["III-V", "Schedule III–V"]];
 const DELIVERY = [["any", "Any"], ["free", "Free only"], ["fee", "Max fee"]];
 
 function StatusBadge({ status }) {
@@ -31,9 +30,6 @@ export default function PatientDashboard() {
   const [med, setMed] = useState({
     name: pending?.name || "", dose: pending?.dose || "", form: pending?.form || "", quantity: pending?.quantity || "",
   });
-  const [schedule, setSchedule] = useState("none");
-  const [fridge, setFridge] = useState(false);
-  const [specialty, setSpecialty] = useState(false);
   const [transferStatus, setTransferStatus] = useState(!!pending?.transfer);
   const [prescriberStatus, setPrescriberStatus] = useState(!!pending?.prescriber_call);
   const [prescriptionStatus, setPrescriptionStatus] = useState(!!pending?.has_rx);
@@ -76,7 +72,7 @@ export default function PatientDashboard() {
     setBusy(true);
     try {
       await api.post("/requests", {
-        medication: med, schedule, fridge, specialty,
+        medication: med,
         transfer_status: transferStatus,
         prescriber_status: prescriberStatus,
         prescription_status: prescriptionStatus,
@@ -143,26 +139,11 @@ export default function PatientDashboard() {
                 </div>
               </div>
 
-              <div className="pt-2">
-                <Label className="text-sm mb-2 block">Clinical classification</Label>
-                <div className="flex flex-wrap gap-2">
-                  {SCHEDULES.map(([val, label]) => (
-                    <button key={val} data-testid={`req-sched-${val}`} onClick={() => setSchedule(val)}
-                      className={`text-sm px-4 py-2 rounded-full border transition-colors ${
-                        schedule === val ? "bg-slate-900 text-white border-slate-900" : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
-                      }`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-3 mt-3">
-                  <label className="flex items-center gap-2 text-sm text-slate-700 border border-slate-200 rounded-lg px-3 py-2">
-                    Refrigerated <Switch data-testid="req-fridge" checked={fridge} onCheckedChange={setFridge} />
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-slate-700 border border-slate-200 rounded-lg px-3 py-2">
-                    Specialty <Switch data-testid="req-specialty" checked={specialty} onCheckedChange={setSpecialty} />
-                  </label>
-                </div>
+              <div className="pt-2 flex items-start gap-2.5 rounded-lg bg-slate-50 border border-slate-200 p-3" data-testid="auto-classify-note">
+                <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                <p className="text-sm text-slate-500">
+                  Clinical details (drug schedule, storage, specialty status) are validated and auto-assigned by our AI for the pharmacy — you don't need to fill these in.
+                </p>
               </div>
 
               <div>
@@ -264,9 +245,6 @@ export default function PatientDashboard() {
                   </p>
                 </div>
                 <div className="flex gap-1.5 flex-wrap">
-                  {r.schedule !== "none" && <Badge variant="outline" className="rounded-full">Sched {r.schedule}</Badge>}
-                  {r.fridge && <Badge variant="outline" className="rounded-full">Fridge</Badge>}
-                  {r.specialty && <Badge variant="outline" className="rounded-full">Specialty</Badge>}
                   {r.transfer_status && <Badge variant="outline" className="rounded-full">Transfer</Badge>}
                   {r.prescription_status && <Badge variant="outline" className="rounded-full">Has Rx</Badge>}
                   {r.prescriber_status && <Badge variant="outline" className="rounded-full">Call prescriber</Badge>}
