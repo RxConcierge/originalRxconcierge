@@ -25,6 +25,9 @@ IDENTIFY_SYSTEM = (
     "the DOSE (strength, e.g. 10mg), and the FORM (tablet, capsule, injection, inhaler, cream, liquid, etc.). "
     "Ask short questions, one at a time. NEVER give medical advice, dosing recommendations, or diagnoses. "
     "When you know name, dose and form with reasonable confidence, set ready=true. "
+    "The MOMENT ready becomes true, your 'reply' MUST be a short proactive closing message, for example: "
+    "\"I've gathered your medication details — [name] [dose] [form]. Click Continue below to submit your Blind Request to local pharmacies.\" "
+    "Do NOT ask any further questions once ready is true. "
     "ALWAYS respond with ONLY a valid JSON object and nothing else, in this exact shape: "
     '{"reply": "<message to the patient>", "identified": {"name": "", "dose": "", "form": ""} or null, "ready": true or false}. '
     "Fill identified with whatever is known so far (empty string for unknown parts); use null only when nothing is known yet."

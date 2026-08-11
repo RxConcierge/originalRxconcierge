@@ -2,12 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Bot, User, CheckCircle2, Loader2, Sparkles } from "lucide-react";
+import { Send, Bot, User, CheckCircle2, Loader2, Sparkles, ArrowRight } from "lucide-react";
 
 const SESSION_ID = "anon-" + Math.random().toString(36).slice(2);
 const CHIPS = ["I'm not sure of the exact name", "It's a tablet", "It's an injection", "10mg", "It's for cholesterol"];
 
-export default function AIChat({ onIdentified, identified }) {
+export default function AIChat({ onIdentified, identified, onContinue }) {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -16,6 +16,7 @@ export default function AIChat({ onIdentified, identified }) {
   ]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export default function AIChat({ onIdentified, identified }) {
       const res = await api.post("/chat/message", { session_id: SESSION_ID, message: content, history });
       setMessages((m) => [...m, { role: "assistant", text: res.data.reply }]);
       if (res.data.identified) onIdentified(res.data.identified, res.data.ready);
+      if (res.data.ready) setReady(true);
     } catch (e) {
       setMessages((m) => [...m, { role: "assistant", text: "Sorry, I had trouble responding. Please try again." }]);
     } finally {
@@ -41,7 +43,8 @@ export default function AIChat({ onIdentified, identified }) {
   };
 
   return (
-    <div className="flex flex-col h-[440px]" data-testid="ai-chat">
+    <div data-testid="ai-chat">
+    <div className="flex flex-col h-[440px]">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 bg-slate-50 rounded-t-xl">
         <div className="w-7 h-7 rounded-md bg-blue-600 flex items-center justify-center">
           <Sparkles className="w-4 h-4 text-white" />
@@ -123,6 +126,22 @@ export default function AIChat({ onIdentified, identified }) {
           <Send className="w-4 h-4" />
         </Button>
       </div>
+    </div>
+
+      {ready && (
+        <div className="p-4 border-t border-slate-200 bg-emerald-50/70 animate-fade-up" data-testid="chat-continue-banner">
+          <p className="text-sm text-emerald-800 flex items-center gap-1.5 mb-3">
+            <CheckCircle2 className="w-4 h-4" /> Medication details gathered — you're ready to submit.
+          </p>
+          <Button
+            data-testid="chat-continue-btn"
+            onClick={onContinue}
+            className="w-full h-12 text-base rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 transition-transform gap-2 font-semibold"
+          >
+            Continue to Blind Request <ArrowRight className="w-5 h-5" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

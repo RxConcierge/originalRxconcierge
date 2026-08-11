@@ -96,7 +96,7 @@ export default function Landing() {
       {/* Chat + intake */}
       <section id="chat" className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-16 scroll-mt-20">
         <div className="lg:col-span-7 rounded-2xl border border-slate-200 bg-white shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08)] overflow-hidden">
-          <AIChat onIdentified={onIdentified} identified={identified} />
+          <AIChat onIdentified={onIdentified} identified={identified} onContinue={proceed} />
         </div>
 
         <div className="lg:col-span-5 space-y-4">
