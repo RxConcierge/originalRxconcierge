@@ -43,25 +43,32 @@ export default function PharmacyDashboard() {
         },
       });
       setQueue(res.data);
-    } catch (e) {}
+    } catch (e) {
+      console.error("Failed to load queue:", e);
+      toast.error("Couldn't load the request queue. Please refresh.");
+    }
   }, [filters]);
 
-  const loadAccepted = async () => {
+  const loadAccepted = useCallback(async () => {
     try {
       const res = await api.get("/requests/accepted");
       setAccepted(res.data);
-    } catch (e) {}
-  };
+    } catch (e) {
+      console.error("Failed to load accepted requests:", e);
+    }
+  }, []);
 
-  const loadEarnings = async () => {
+  const loadEarnings = useCallback(async () => {
     try {
       const res = await api.get("/pharmacy/earnings");
       setEarnings(res.data);
-    } catch (e) {}
-  };
+    } catch (e) {
+      console.error("Failed to load earnings:", e);
+    }
+  }, []);
 
   useEffect(() => { loadQueue(); }, [loadQueue]);
-  useEffect(() => { loadAccepted(); loadEarnings(); }, []);
+  useEffect(() => { loadAccepted(); loadEarnings(); }, [loadAccepted, loadEarnings]);
 
   const toggleClinical = (f) => {
     if (f.key === "schedule") {

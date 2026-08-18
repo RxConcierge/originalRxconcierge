@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api, { formatApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,14 +43,17 @@ export default function PatientDashboard() {
   const [requests, setRequests] = useState([]);
   const [tab, setTab] = useState("new");
 
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
     try {
       const res = await api.get("/requests/mine");
       setRequests(res.data);
-    } catch (e) {}
-  };
+    } catch (e) {
+      console.error("Failed to load your requests:", e);
+      toast.error("Couldn't load your requests. Please refresh.");
+    }
+  }, []);
 
-  useEffect(() => { loadRequests(); }, []);
+  useEffect(() => { loadRequests(); }, [loadRequests]);
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -62,7 +65,9 @@ export default function PatientDashboard() {
           medication_name: med.name,
         });
         setMatch(res.data);
-      } catch (e) {}
+      } catch (e) {
+        console.error("Failed to preview pharmacy matches:", e);
+      }
     }, 400);
     return () => clearTimeout(t);
   }, [deliveryPref, maxFee, fillToday, med.name]);
@@ -254,8 +259,8 @@ export default function PatientDashboard() {
 
               {r.refinements?.length > 0 && (
                 <div className="mt-4 space-y-2">
-                  {r.refinements.map((ref, i) => (
-                    <div key={i} className="flex gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-lg p-3">
+                  {r.refinements.map((ref) => (
+                    <div key={ref.created_at} className="flex gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-lg p-3">
                       <RefreshCw className="w-4 h-4 shrink-0 mt-0.5" />
                       <span><b>AI refinement:</b> {ref.summary}</span>
                     </div>

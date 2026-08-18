@@ -10,6 +10,7 @@ const CHIPS = ["I'm not sure of the exact name", "It's a tablet", "It's an injec
 export default function AIChat({ onIdentified, identified, onContinue }) {
   const [messages, setMessages] = useState([
     {
+      id: "welcome",
       role: "assistant",
       text: "Hi, I'm MedFind AI. Tell me the medication you need — even a description works. What's the name or what's it for?",
     },
@@ -27,16 +28,18 @@ export default function AIChat({ onIdentified, identified, onContinue }) {
     const content = (text ?? input).trim();
     if (!content || busy) return;
     const history = messages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", text: m.text }));
-    setMessages((m) => [...m, { role: "user", text: content }]);
+    const mkId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setMessages((m) => [...m, { id: mkId(), role: "user", text: content }]);
     setInput("");
     setBusy(true);
     try {
       const res = await api.post("/chat/message", { session_id: SESSION_ID, message: content, history });
-      setMessages((m) => [...m, { role: "assistant", text: res.data.reply }]);
+      setMessages((m) => [...m, { id: mkId(), role: "assistant", text: res.data.reply }]);
       if (res.data.identified) onIdentified(res.data.identified, res.data.ready);
       if (res.data.ready) setReady(true);
     } catch (e) {
-      setMessages((m) => [...m, { role: "assistant", text: "Sorry, I had trouble responding. Please try again." }]);
+      console.error("Chat message failed:", e);
+      setMessages((m) => [...m, { id: mkId(), role: "assistant", text: "Sorry, I had trouble responding. Please try again." }]);
     } finally {
       setBusy(false);
     }
@@ -56,9 +59,9 @@ export default function AIChat({ onIdentified, identified, onContinue }) {
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-white">
-        {messages.map((m, i) => (
+        {messages.map((m) => (
           <div
-            key={i}
+            key={m.id}
             className={`flex gap-2.5 animate-fade-up ${m.role === "user" ? "flex-row-reverse" : ""}`}
           >
             <div

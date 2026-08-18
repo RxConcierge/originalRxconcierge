@@ -134,13 +134,13 @@ class TestRequestLifecycle:
         # Watchlist hit: Ozempic
         ozempic = [d for d in docs if d.get("medication", {}).get("name", "").lower() == "ozempic"]
         assert len(ozempic) >= 1
-        assert ozempic[0].get("watchlist_hit") is True
+        assert ozempic[0].get("watchlist_hit") == True
 
     def test_queue_watchlist_only_filter(self, downtown_token):
         r = requests.get(f"{API}/requests/queue?watchlist_only=true", headers=_auth_headers(downtown_token))
         assert r.status_code == 200
         for d in r.json():
-            assert d.get("watchlist_hit") is True
+            assert d.get("watchlist_hit") == True
 
     def test_queue_schedule_filter(self, downtown_token):
         r = requests.get(f"{API}/requests/queue?schedule=II", headers=_auth_headers(downtown_token))
@@ -258,9 +258,9 @@ class TestPostUpdateAndEarnings:
         r = requests.post(f"{API}/requests", headers=_auth_headers(patient_token), json=payload)
         assert r.status_code == 200, r.text
         req = r.json()
-        assert req["transfer_status"] is True
-        assert req["prescription_status"] is True
-        assert req["prescriber_status"] is False
+        assert req["transfer_status"] == True
+        assert req["prescription_status"] == True
+        assert req["prescriber_status"] == False
         assert req.get("post_updates") == []
         req_id = req["id"]
 
@@ -318,6 +318,51 @@ class TestPostUpdateAndEarnings:
     def test_earnings_requires_pharmacy(self, patient_token):
         r = requests.get(f"{API}/pharmacy/earnings", headers=_auth_headers(patient_token))
         assert r.status_code == 403
+
+
+# -------------- Cookie-based Auth --------------
+class TestCookieAuth:
+    def test_login_sets_httponly_cookie(self):
+        s = requests.Session()
+        r = s.post(f"{API}/auth/login", json={"email": "patient@demo.com", "password": "demo123"})
+        assert r.status_code == 200
+        # cookie should be set on session
+        assert "access_token" in s.cookies, f"access_token cookie not set; cookies={dict(s.cookies)}"
+        # httpOnly + secure attrs must be in Set-Cookie header
+        raw = r.headers.get("set-cookie", "").lower()
+        assert "httponly" in raw, f"cookie not httponly: {raw}"
+        # /auth/me must work with ONLY the cookie (no Bearer header)
+        me = s.get(f"{API}/auth/me")
+        assert me.status_code == 200
+        assert me.json()["email"] == "patient@demo.com"
+
+    def test_logout_clears_cookie_and_me_401(self):
+        s = requests.Session()
+        r = s.post(f"{API}/auth/login", json={"email": "patient@demo.com", "password": "demo123"})
+        assert r.status_code == 200
+        assert s.get(f"{API}/auth/me").status_code == 200
+        lo = s.post(f"{API}/auth/logout")
+        assert lo.status_code == 200
+        # Clear cookies to simulate browser honoring delete_cookie
+        s.cookies.clear()
+        me = s.get(f"{API}/auth/me")
+        assert me.status_code == 401
+
+    def test_register_sets_cookie(self):
+        s = requests.Session()
+        email = f"test_cookie_{uuid.uuid4().hex[:8]}@demo.com"
+        r = s.post(f"{API}/auth/register", json={
+            "email": email, "password": "pass1234", "name": "TEST Cookie", "role": "patient",
+        })
+        assert r.status_code == 200
+        assert "access_token" in s.cookies
+        me = s.get(f"{API}/auth/me")
+        assert me.status_code == 200
+        assert me.json()["email"] == email
+
+    def test_me_no_cookie_returns_401(self):
+        r = requests.get(f"{API}/auth/me")
+        assert r.status_code == 401
 
 
 # -------------- AI Clinical Validation + Auto-classification --------------
@@ -401,7 +446,7 @@ class TestAIClinicalValidation:
 
         # Pharmacy MUST see clinical fields
         assert add_row.get("schedule") == "II", f"Adderall schedule expected II, got {add_row.get('schedule')}"
-        assert ins_row.get("fridge") is True, f"Lantus fridge expected True, got {ins_row.get('fridge')}"
+        assert ins_row.get("fridge") == True, f"Lantus fridge expected True, got {ins_row.get('fridge')}"
 
         # Schedule II filter should include Adderall
         qf = requests.get(f"{API}/requests/queue?schedule=II", headers=_auth_headers(downtown_token))

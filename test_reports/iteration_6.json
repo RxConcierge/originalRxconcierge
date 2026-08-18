@@ -1,0 +1,28 @@
+{
+  "summary": "Verified the cookie-based auth migration (httpOnly access_token) end-to-end. Backend: 25/25 pytest passed including 4 NEW TestCookieAuth tests (login sets httpOnly cookie, /auth/me works with cookie-only, logout deletes cookie + /auth/me becomes 401, register sets cookie). Frontend UI: (1) Patient login (demo-patient-btn -> auth-submit-btn) redirects to /patient, 'Your requests' rendered, localStorage.mf_token is NULL, access_token cookie is httpOnly+secure+SameSite=None. (2) Session persistence: page.reload() and direct-nav to /patient BOTH keep the user authenticated (AuthContext calls /auth/me via cookie). (3) Logout: nav-logout-btn clears cookie (0 access_token cookies after) and subsequent /patient nav redirects to /auth. (4) Pharmacy login redirects to /pharmacy with 'Downtown Rx · Live queue' and session persists on reload. (5) Registration via auth-toggle-btn -> fill auth-name/email/password -> auth-submit-btn logs the new user in via cookie (no localStorage token) and lands on /patient. (6) Regression - pharmacy queue shows blind requests (no patient names) with Schedule II badge on Adderall, Fridge on Lantus, Fridge+Specialty on Ozempic, Watchlist alerts, and Clinical Filters row (Schedule II / Schedule III–V / Fridge / Specialty / Watchlist only). (7) Landing anonymous AI chat: identifies Lipitor 20mg 30 tablets, populates intake progress, and after answering the clarifying question the large chat-continue-btn ('Continue to Blind Request') appears — POST /chat/message is now credentialed but still anonymous. No auth-related regressions found. The cookie flow works cleanly on the external preview URL, confirming SameSite=None+Secure cookies survive the same-origin ingress round-trip.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_backend.py",
+    "/app/test_reports/pytest/iter6.xml"
+  ],
+  "action_items": [
+    "Optional: update /app/memory/test_credentials.md — the last line still describes JWT-in-localStorage; auth is now httpOnly cookie based.",
+    "Optional: server.py sets SameSite=None on the access_token cookie unconditionally; fine because the deployment is HTTPS+same-origin, but consider SameSite=Lax for stronger CSRF defense once the frontend is confirmed to be same-site."
+  ],
+  "critical_code_review_comments": [
+    "auth.py cookie fallback order (cookie -> Bearer) is correct; good defense-in-depth for API clients.",
+    "logout endpoint uses response.delete_cookie without explicit path='/' matching set_cookie's path='/' — actually it does not pass path, which can leave the cookie in some browsers; recommend response.delete_cookie('access_token', path='/', samesite='none', secure=True) to guarantee removal.",
+    "set_cookie(secure=True, samesite='none') is required for cross-site XHR but ties the app to HTTPS — dev/local http will silently drop the cookie. Fine for preview, but flag for local dev.",
+    "AuthContext user state uses null=checking / false=not-auth / obj=auth. Ensure ALL guarded components handle the null case (loading state) — spot-check confirmed App.js Protected route does this.",
+    "Frontend api.js withCredentials:true is set correctly; no Authorization header interceptor remains — good, avoids stale tokens.",
+    "test_credentials.md still references localStorage mf_token — should be updated to reflect cookie auth."
+  ],
+  "updated_files": ["/app/backend/tests/test_backend.py"],
+  "success_rate": {"backend": "100% (25/25 pytest incl. 4 new TestCookieAuth tests)", "frontend": "100% (patient login/reload/direct-nav, logout, pharmacy login/reload, register, queue badges+blind, anonymous chat continue-btn)"},
+  "test_credentials": "patient@demo.com/demo123, downtown@demo.com/demo123, greenvalley@demo.com/demo123, alex@demo.com/demo123",
+  "seed_data_creation": "Created test_reg_<hash>@demo.com via UI registration and test_cookie_<hash>@demo.com via pytest — all TEST_ prefixed and safe to leave in Mongo.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Cookie-based auth (httpOnly access_token, SameSite=None, Secure) is fully working on the preview URL. Backend cookie tests live in TestCookieAuth class in /app/backend/tests/test_backend.py (25 tests total, all pass in ~20s). Session persistence on reload/direct-nav confirmed via AuthContext /auth/me mount call. Pharmacy queue AI classification, blind view, clinical filters, watchlist, earnings post-update flows all remain green from prior iterations. If future changes touch AuthContext or api.js withCredentials, retest patient reload persistence first (main risk)."
+}
