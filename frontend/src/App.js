@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
-import Landing from "@/pages/Landing";
+import PatientHome from "@/pages/PatientHome";
+import PharmacyHome from "@/pages/PharmacyHome";
 import AuthPage from "@/pages/AuthPage";
 import PatientDashboard from "@/pages/PatientDashboard";
 import PharmacyDashboard from "@/pages/PharmacyDashboard";
@@ -25,7 +26,8 @@ function App() {
         <BrowserRouter>
           <Navbar />
           <Routes>
-            <Route path="/" element={<Landing />} />
+            <Route path="/" element={<PatientHome />} />
+            <Route path="/pharmacy-portal" element={<PharmacyHome />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route
               path="/patient"

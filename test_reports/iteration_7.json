@@ -1,0 +1,31 @@
+{
+  "summary": "Frontend-only testing of the two new marketing homes (PatientHome at '/', PharmacyHome at '/pharmacy-portal') plus routing/CTA regressions and core dashboard regressions. Embedded AI chat inside the phone frame was driven with REAL typing: it identified Lipitor 20mg tablet qty 30, showed patient-identified-pills, then after a confirmation reply exposed chat-continue-btn inside the phone. Continue stored mf_pendingMed and navigated to /auth (anon); patient demo login landed on /patient with the form prefilled (Lipitor / 20mg / tablet / 30, Have paper Rx ON, transfer OFF). Pharmacy portal rendered KPIs (12/3/8/$23.50), filters (Schedule II/Fridge/Specialty/Watchlist only) and the sample queue with Watch alerts. All cross-navigation links worked. Role-aware CTAs correct: logged out -> /auth, pharmacy logged in -> /pharmacy. E2E regression passed: patient posted Ozempic request -> pharmacy queue showed it with clinical badges (Fridge/Specialty/Fill today) + Watchlist alert -> Accept charged simulated $4.99 (shown as 'Fee $4.99 charged' on patient card) -> clinical update posted and earnings moved $3.00 -> $3.50 (+$0.50).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "PatientHome ('/') mobile 390px", "issues": ["Horizontal overflow: documentElement.scrollWidth = 403 vs viewport 390 (~13px). Caused by the phone-frame glow div (absolute -inset-8 ... blur-3xl) extending beyond the 90vw frame. Suggest overflow-x-hidden on the hero section/main or reducing the glow inset."]},
+      {"screen": "AuthPage", "issues": ["Left hero image is a hospital ICU bed/monitor photo - not really relevant to a pharmacy/medication-sourcing product; consider a pharmacy/medication image."]},
+      {"screen": "Both home pages", "issues": ["No footer at all - pages end with the cross-role text link; a minimal footer (privacy/terms/contact) would make the marketing pages feel complete."]},
+      {"screen": "PatientHome chat in phone frame", "issues": ["Chat viewport is fixed h-[440px]; with the quick-reply chips visible the message area is quite short so the welcome message plus first reply immediately scrolls. Functional, but slightly cramped on desktop where more height is available."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_backend.py"],
+  "action_items": [
+    "Fix ~13px horizontal overflow on '/' at mobile widths (phone-frame blur glow).",
+    "Optional: replace the ICU hero image on /auth with a pharmacy-relevant image; add a simple footer to both home pages."
+  ],
+  "critical_code_review_comments": [
+    "PatientHome.proceed(): if the AI has not identified anything, mf_pendingMed from an older session is left in localStorage and will prefill the next request form. Consider clearing the key when identified is null.",
+    "PharmacyHome dashboard-preview is fully static sample data while the hero copy says 'Live queue' - the 'Preview - sample data' caption mitigates this, but numbers never match the real dashboard (real account showed In queue 1 / Earnings $3.50 vs 12 / $23.50)."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "not tested (skipped per request)", "frontend": "100% of requested flows passed (4 minor design nits)" },
+  "seed_data_creation": "Created 1 patient blind request (Ozempic 0.5mg injection pen, qty 1 pen) via patient@demo.com; accepted it as downtown@demo.com and posted one clinical update (price = $42.00, note 'TEST_ in stock today'). Demo data only; not cleaned up.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "patient@demo.com / demo123, downtown@demo.com / demo123 (httpOnly cookie auth, both worked)",
+  "context_for_next_testing_agent": "Both marketing homes and the anon-chat -> /auth -> /patient prefill flow are verified working with real typing (fill + chat-send-btn). To reach chat-continue-btn the AI usually asks one confirmation question, so send a follow-up like 'Correct, no prescriber call needed.' Note chat-input fill works fine; earlier harness typing problems were not reproducible. KPI label assertions must be case-insensitive (labels use CSS uppercase). Pharmacy accept flow charges simulated $4.99 and each clinical update adds $0.50 to earnings-total.",
+  "rca_of_the_issue": "No functional defects found. Mobile overflow RCA: the decorative glow <div className='absolute -inset-8 ... blur-3xl -z-10'> around the 90vw phone frame extends 32px past the frame on each side, pushing document scrollWidth to 403px at a 390px viewport."
+}

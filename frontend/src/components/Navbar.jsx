@@ -24,13 +24,20 @@ export default function Navbar() {
         <nav className="flex items-center gap-2 sm:gap-4">
           {!user && (
             <>
-              <a
-                href="/#how"
-                data-testid="nav-how"
+              <Link
+                to="/"
+                data-testid="nav-for-patients"
                 className="hidden sm:block text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors px-2"
               >
-                How it works
-              </a>
+                For Patients
+              </Link>
+              <Link
+                to="/pharmacy-portal"
+                data-testid="nav-for-pharmacies"
+                className="hidden sm:block text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors px-2"
+              >
+                For Pharmacies
+              </Link>
               <Button
                 data-testid="nav-signin-btn"
                 variant="ghost"

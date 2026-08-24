@@ -71,8 +71,8 @@ export default function AuthPage() {
       {/* left visual */}
       <div className="hidden lg:block relative">
         <img
-          src="https://images.unsplash.com/photo-1580281657702-257584239a55?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAxODF8MHwxfHNlYXJjaHwzfHxjbGVhbiUyMG1vZGVybiUyMG1lZGljYWwlMjBjbGluaWN8ZW58MHx8fHwxNzg2MjkyMjkxfDA&ixlib=rb-4.1.0&q=85"
-          alt="Clean modern medical clinic"
+          src="https://images.pexels.com/photos/14797864/pexels-photo-14797864.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=900&w=900"
+          alt="Pharmacist working at the pharmacy counter"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 to-slate-900/10" />
